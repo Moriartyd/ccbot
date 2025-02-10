@@ -1,4 +1,3 @@
-// const OpenAI = require("openai");
 const axios = require('axios');
 
 const TelegramBot = require('node-telegram-bot-api');
@@ -6,6 +5,9 @@ const https = require('https');
 const GigaToken = require('./GigaToken.js')
 
 const path = require('path')
+
+process.env.API_KEY_TG_BOT='7759036798:AAEWNVvhbJh60WRDCZVxKKcU6JqVInC5y90'
+process.env.GIGA_AUTH_KEY='N2NmZjM1ZGMtYTg3NC00M2M4LWE2Y2ItMWFhNzk2MmI1OWFlOmEzNDVkMzRhLTEyZjItNDBmMi04MGFhLTZjM2MwYmQ1NDgwMA=='
 
 process.env.NODE_EXTRA_CA_CERTS= path.resolve(__dirname, 'dir', 'with', 'certs')
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
@@ -19,8 +21,24 @@ const gigaToken = new GigaToken('start', new Date().getTime());
 bot.on("polling_error", err => console.log(err.data.error.message));
 
 bot.on('text', async msg => {
-    await bot.sendMessage(msg.chat.id, msg.text);
+    if (['/start', '/stop'].includes(msg.text)) {
+        await processComand(msg);
+    } else {
+        console.log('Request_' + msg.chat.id + ': ' + msg.text);
+        var response = await sendContentToGigaChat(msg.text);
+        console.log('Response_' + msg.chat.id + ': ' + response);
+        await bot.sendMessage(msg.chat.id, response);
+    }
 })
+
+async function processComand(msg) {
+    console.log(msg.chat.id, 'sent command message:', msg.text);
+    if (msg == '/start') {
+        await bot.sendMessage(msg.chat.id, "Привет! Напиши мне название лекарства или что тебя беспокоит?");
+    } else {
+        await bot.sendMessage(msg.chat.id, "Извини, я не знаю что значит '" + msg.text + "'");
+    }
+}
 
 bot.on('photo', async msg => {
     var fileId = msg.photo[msg.photo.length - 1].file_id;
@@ -84,23 +102,23 @@ async function getFilePath(fileId) {
 //     }
 // }
 
-async function sendImageUrlToGigaChat(imageUrl) {
+async function sendContentToGigaChat(userContent) {
     try {
         var token = await gigaToken.getToken();
         const response = await axios.post(
             'https://gigachat.devices.sberbank.ru/api/v1/chat/completions', // URL-адрес API
             {
-                model: 'GigaChat-Max',
+                model: 'GigaChat',
                 messages: [
                     {
                         role: "system",
-                        content: "Ты - профессиональный повар.Ты знаешь все блюда мира и калорийность каждого продукта.\
-                        Отвечай только в формате:\
-                        Я узнал это блюдо, это <название блюда>. Примерное количество калорий в порции на 100г - <количество калорий>" 
+                        content: "Ты фармацевт, который экономит деньги своим покупателям и можешь посоветовать дешевый препарат от любого недуга.\
+                        При рекомендации препаратов, дай среднюю стоимость. Если ты видишь название препарата, посоветуй дешевый аналог.\
+                        Только предупреди, что на самом деле ты не являешься врачом и твои рекомендации носят лишь ознакомительный характер." 
                     },
                     {
                         role: "user",
-                        content: imageUrl 
+                        content: userContent 
                     }
                 ],
                 stream: false,

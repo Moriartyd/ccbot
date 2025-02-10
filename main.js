@@ -6,9 +6,6 @@ const GigaToken = require('./GigaToken.js')
 
 const path = require('path')
 
-process.env.API_KEY_TG_BOT='7759036798:AAEWNVvhbJh60WRDCZVxKKcU6JqVInC5y90'
-process.env.GIGA_AUTH_KEY='N2NmZjM1ZGMtYTg3NC00M2M4LWE2Y2ItMWFhNzk2MmI1OWFlOmEzNDVkMzRhLTEyZjItNDBmMi04MGFhLTZjM2MwYmQ1NDgwMA=='
-
 process.env.NODE_EXTRA_CA_CERTS= path.resolve(__dirname, 'dir', 'with', 'certs')
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 

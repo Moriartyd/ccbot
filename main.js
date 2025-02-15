@@ -1,33 +1,37 @@
-const axios = require('axios');
+//Объявление библиотек
+const axios = require('axios'); //Библиотека для http запросов
+const TelegramBot = require('node-telegram-bot-api'); //Библиотека для тг-бота
+const GigaToken = require('./GigaToken.js'); //Библиотека для получения актуального токена для достукпа к гигаЧату
 
-const TelegramBot = require('node-telegram-bot-api');
-const https = require('https');
-const GigaToken = require('./GigaToken.js')
-
+//Добавление сертификата мин. цифры для взаимодействия с api gigaChat (взято с сайта gigachat)
 const path = require('path')
-
 process.env.NODE_EXTRA_CA_CERTS= path.resolve(__dirname, 'dir', 'with', 'certs')
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
+//Инициализация тг-бота
 const bot = new TelegramBot(process.env.API_KEY_TG_BOT, {
     polling: true
 });
 
+//Инициализация класса, который отвечает за токен для гигаЧата
 const gigaToken = new GigaToken('start', new Date().getTime());
 
+//Вывод лога в консоль при ошибке получения сообщений от тг-бота
 bot.on("polling_error", err => console.log(err.data.error.message));
 
+//Обработка получения текстового сообщения от тг-бота
 bot.on('text', async msg => {
-    if (['/start', '/stop'].includes(msg.text)) {
+    if (['/start', '/stop'].includes(msg.text)) { //Если бот получил эти команды, то он должен их обработать отдельно
         await processComand(msg);
     } else {
-        console.log('Request_' + msg.chat.id + ': ' + msg.text);
-        var response = await sendContentToGigaChat(msg.text);
-        console.log('Response_' + msg.chat.id + ': ' + response);
-        await bot.sendMessage(msg.chat.id, response);
+        console.log('Request_' + msg.chat.id + ': ' + msg.text); //Вывод в консоль ИД чата и сообщения
+        var response = await sendContentToGigaChat(msg.text); //Отправка сообщения в гигаЧат
+        console.log('Response_' + msg.chat.id + ': ' + response); //Вывод в консоль ИД чата и ответа
+        await bot.sendMessage(msg.chat.id, response); //Отправка ответа от гигаЧата пользователю
     }
 })
 
+//Обработка команд старт стоп
 async function processComand(msg) {
     console.log(msg.chat.id, 'sent command message:', msg.text);
     if (msg == '/start') {
@@ -37,99 +41,42 @@ async function processComand(msg) {
     }
 }
 
-bot.on('photo', async msg => {
-    var fileId = msg.photo[msg.photo.length - 1].file_id;
-    var filePath = await getFilePath(fileId);
-    console.log('filePath=' + filePath);
-    var imageUrl = 'https://api.telegram.org/file/bot' + process.env.API_KEY_TG_BOT + '/' + filePath;
-    console.log('imageUrl=' + imageUrl);
-    var response = await sendImageUrlToGigaChat(imageUrl);
-    console.log('response: ' + response);
-    await bot.sendMessage(msg.chat.id, response);
-})
-
-async function getFilePath(fileId) {
-
-    var url = 'api.telegram.org';
-    var path = '/bot' + process.env.API_KEY_TG_BOT + '/getFile?file_id=' + fileId;
-
-    var options = {
-        host: url,
-        port: 443,
-        path: path,
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        json: true
-      };
-
-      return new Promise((resolve, reject) => {
-        https
-            .get(options, function(res) {
-                res.setEncoding('utf8');
-                res.on('data', function (data) {
-                    var jsonObject = JSON.parse(data);
-                    console.log('File path from response:' + jsonObject.result.file_path);
-                    resolve(jsonObject.result.file_path)
-                });
-            })
-            .on("error", e => reject(e))
-        }
-    )
-}
-
-// async function sendImageUrlToChatGPT(imageUrl) {
-//     try {
-//         const response = await openai.chat.completions.create({
-//             model: "qwen2.5-vl-72b-instruct", // Модель с поддержкой изображений
-//             messages: [
-//                 { role: "system", content: "Ты помощник, который анализирует изображения." },
-//                 { role: "user", content: [
-//                     { type: "text", content: "Что изображено на этом фото?" },
-//                     { type: "image_url", image_url: imageUrl }
-//                 ] }
-//             ],
-//             max_tokens: 500
-//         });
-
-//         console.log('Ответ ChatGPT:', response.choices[0].message.content);
-//     } catch (error) {
-//         console.error('Ошибка:', error);
-//     }
-// }
-
+//Отправка сообщения в гигачат
 async function sendContentToGigaChat(userContent) {
     try {
-        var token = await gigaToken.getToken();
-        const response = await axios.post(
-            'https://gigachat.devices.sberbank.ru/api/v1/chat/completions', // URL-адрес API
+        var token = await gigaToken.getToken(); //Получаем токен доступа к гигаЧату
+        const response = await axios.post( //Отправляем POST запрос в гигаЧат с параметрами ниже
+            'https://gigachat.devices.sberbank.ru/api/v1/chat/completions', // URL-адрес API гигаЧата
             {
-                model: 'GigaChat',
-                messages: [
+                model: 'GigaChat', //Название модели
+                messages: [ //Сообщения
                     {
+                        //Промт
                         role: "system",
                         content: "Ты фармацевт, который экономит деньги своим покупателям и можешь посоветовать дешевый препарат от любого недуга.\
                         При рекомендации препаратов, дай среднюю стоимость. Если ты видишь название препарата, посоветуй дешевый аналог.\
                         Только предупреди, что на самом деле ты не являешься врачом и твои рекомендации носят лишь ознакомительный характер." 
                     },
                     {
+                        //Сообщение от пользователя
                         role: "user",
                         content: userContent 
                     }
                 ],
+                //Обязательные параметры для запроса
                 stream: false,
                 update_interval: 0
             },
             {
+                //Заголовки запроса
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
+                    'Content-Type': 'application/json', //Тип контента, который отправлен в запросе
+                    'Authorization': 'Bearer ' + token //Токен доступа к api гигаЧата
                 }
             }
         );
-        return response.data.choices[0].message.content;
+        return response.data.choices[0].message.content; //Возврат ответа
     } catch (error) {
-        return error;
+        return error; //Возврат ошибки
     }
 }

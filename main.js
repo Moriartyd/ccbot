@@ -34,9 +34,9 @@ bot.on('text', async msg => {
 //Обработка команд старт стоп
 async function processComand(msg) {
     console.log(msg.chat.id, 'sent command message:', msg.text);
-    if (msg == '/start') {
+    if (msg.text == '/start') {
         await bot.sendMessage(msg.chat.id, "Привет! Напиши мне название лекарства или что тебя беспокоит?");
-    } else {
+    } else if (msg.text != '/stop') {
         await bot.sendMessage(msg.chat.id, "Извини, я не знаю что значит '" + msg.text + "'");
     }
 }
